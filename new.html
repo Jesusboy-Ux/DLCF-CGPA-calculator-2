@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fellowship CGPA Vault</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans">
+
+    <nav class="bg-indigo-700 text-white shadow-md px-6 py-4 flex justify-between items-center">
+        <h1 class="font-bold text-lg tracking-wide">Academic Directorate Vault</h1>
+        <button id="logoutBtn" onclick="handleLogout()" class="hidden bg-indigo-900 hover:bg-indigo-950 px-3 py-1.5 rounded text-xs transition">Logout</button>
+    </nav>
+
+    <div class="max-w-xl mx-auto p-4 sm:my-6">
+
+        <section id="authScreen" class="bg-white shadow rounded-2xl p-6">
+            <h2 class="text-xl font-bold text-slate-800 mb-1">Welcome Student</h2>
+            <p class="text-xs text-slate-500 mb-6">Access secure tracking and back up your academic standing.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Email Address</label>
+                    <input type="email" id="authEmail" placeholder="you@domain.com" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                    <input type="password" id="authPassword" placeholder="••••••••" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500">
+                </div>
+                
+                <div id="signUpFields" class="hidden space-y-4 pt-2 border-t mt-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Full Name</label>
+                        <input type="text" id="regName" placeholder="John Doe" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Department</label>
+                            <input type="text" id="regDept" placeholder="e.g. Pharmacy" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Current Level</label>
+                            <select id="regLevel" class="w-full bg-white border rounded-lg px-3 py-2 text-sm focus:outline-indigo-500">
+                                <option>100L</option><option>200L</option><option>300L</option><option>400L</option><option>500L</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 space-y-2">
+                    <button id="primaryActionBtn" onclick="submitAuth()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-lg transition shadow">Login</button>
+                    <button id="toggleViewBtn" onclick="toggleAuthMode()" class="w-full text-xs text-indigo-600 hover:underline text-center block">Don't have an account? Sign Up</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="studentScreen" class="hidden space-y-6">
+            <div class="bg-white shadow rounded-2xl p-6">
+                <div class="border-b pb-3 mb-4 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Hi, <span id="userGreeting" class="text-indigo-600">Student</span>!</h2>
+                        <p class="text-xs text-slate-400 font-mono" id="metaBadge">Dept: Unknown</p>
+                    </div>
+                    <button onclick="saveDataToCloud()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow">☁️ Save My Profile</button>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Grading System</label>
+                    <select id="gradingScale" class="w-full bg-slate-50 border rounded-lg px-3 py-2 text-xs focus:outline-indigo-500" onchange="updateGradesDropdown()">
+                        <option value="5">5.0 Scale (Standard NUC - University)</option>
+                        <option value="4_poly">4.0 Scale (NBTE - Polytechnic)</option>
+                        <option value="4_uni">4.0 Scale (Standard Private Uni)</option>
+                        <option value="7">7.0 Scale (UI & Selected Universities)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl mb-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Previous Units</label>
+                        <input type="number" id="prevUnits" placeholder="0" class="w-full border rounded-lg px-3 py-1.5 text-xs focus:outline-indigo-500" oninput="calculateCGPA()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Previous Points</label>
+                        <input type="number" id="prevPoints" placeholder="0" class="w-full border rounded-lg px-3 py-1.5 text-xs focus:outline-indigo-500" oninput="calculateCGPA()">
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Current Semester</h3>
+                    <button onclick="addRow()" class="text-indigo-600 font-semibold text-xs hover:underline">+ Add Row</button>
+                </div>
+                <div id="coursesContainer" class="space-y-2 mb-6">
+                    </div>
+
+                <div class="bg-slate-900 text-white p-4 rounded-xl text-center grid grid-cols-2 gap-2 divide-x divide-slate-800 shadow-inner">
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-widest block">Semester GPA</span>
+                        <span id="gpaDisplay" class="text-2xl font-black text-indigo-400">0.00</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase tracking-widest block">Cumulative CGPA</span>
+                        <span id="cgpaDisplay" class="text-2xl font-black text-emerald-400">0.00</span>
+                    </div>
+                </div>
+                <div class="text-center text-xs mt-2 text-slate-500 font-medium">Standing: <span id="classDisplay" class="text-slate-800 font-bold">N/A</span></div>
+            </div>
+        </section>
+
+        <section id="adminScreen" class="hidden space-y-6">
+            <div class="bg-white shadow rounded-2xl p-6">
+                <div class="border-b pb-3 mb-4">
+                    <h2 class="text-xl font-bold text-indigo-700">Directorate Management Panel</h2>
+                    <p class="text-xs text-slate-500">Real-time anonymized structural data monitoring.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl">
+                        <span class="text-xs font-medium text-indigo-900 block">Monitored Students</span>
+                        <span id="admTotalCount" class="text-3xl font-black text-indigo-700 mt-1">0</span>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl">
+                        <span class="text-xs font-medium text-emerald-900 block">Average CGPA (5.0)</span>
+                        <span id="admAvgCgpa" class="text-3xl font-black text-emerald-700 mt-1">0.00</span>
+                    </div>
+                </div>
+
+                <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Student Performance Matrix Log</h3>
+                <div class="overflow-x-auto border rounded-xl divide-y bg-slate-50 max-h-64 overflow-y-auto" id="adminTableBody">
+                    </div>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="text-center py-6 text-[10px] text-slate-400 uppercase tracking-widest">
+        Active Environment Session • Academic Directorate Ecosystem
+    </footer>
+
+    <script>
+        // CONFIGURATION VARIABLES - PASTE THE COPIED SUPABASE CONFIG KEYS HERE
+        const SUPABASE_URL = "https://ctjqzqxiwxmzuqknaenu.supabase.co"; 
+        const SUPABASE_ANON_KEY = "sb_publishable_y3fdhpZUARmcg8tQYF9WQQ_Slgckyr9"; 
+
+        // Bugfix applied here: proper constructor call initialization syntax
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let isSignUpMode = false;
+        let currentUserSession = null;
+
+        const gradingSystems = {
+            "5": [ {g:"A", p:5}, {g:"B", p:4}, {g:"C", p:3}, {g:"D", p:2}, {g:"E", p:1}, {g:"F", p:0} ],
+            "4_poly": [ {g:"A", p:4}, {g:"AB", p:3.5}, {g:"B", p:3.25}, {g:"BC", p:3}, {g:"C", p:2.75}, {g:"CD", p:2.5}, {g:"D", p:2.25}, {g:"E", p:2}, {g:"F", p:0} ],
+            "4_uni": [ {g:"A", p:4}, {g:"B", p:3}, {g:"C", p:2}, {g:"D", p:1}, {g:"F", p:0} ],
+            "7": [ {g:"A", p:7}, {g:"B", p:6}, {g:"C", p:5}, {g:"D", p:4}, {g:"E", p:3}, {g:"F", p:0} ]
+        };
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            document.getElementById('signUpFields').classList.toggle('hidden', !isSignUpMode);
+            document.getElementById('primaryActionBtn').innerText = isSignUpMode ? "Register Profile" : "Login";
+            document.getElementById('toggleViewBtn').innerText = isSignUpMode ? "Already have an account? Login" : "Don't have an account? Sign Up";
+        }
+
+        async function submitAuth() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value;
+
+            if(!email || !password) return alert("Fill in required credentials.");
+
+            if (isSignUpMode) {
+                const name = document.getElementById('regName').value.trim();
+                const dept = document.getElementById('regDept').value.trim();
+                const level = document.getElementById('regLevel').value;
+
+                if(!name || !dept) return alert("Please fill in registration fields.");
+
+                const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                if(error) return alert("Signup Failed: " + error.message);
+
+                if(data.user) {
+                    await supabaseClient.from('student_gpas').insert([{
+                        id: data.user.id, email, name, department: dept, level: level
+                    }]);
+                    alert("Registration Successful! Proceeding to your calculation engine.");
+                    initializeSession(data.user);
+                }
+            } else {
+                // Administrative Check Pattern
+                if(email === "admin@fellowship.org" && password === "AdminPass123") {
+                    switchActiveView('adminScreen');
+                    loadAdminDashboardData();
+                    return;
+                }
+
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if(error) return alert("Authentication Failed: " + error.message);
+                if(data.user) initializeSession(data.user);
+            }
+        }
+
+        async function initializeSession(user) {
+            currentUserSession = user;
+            switchActiveView('studentScreen');
+            
+            const { data, error } = await supabaseClient.from('student_gpas').select('*').eq('id', user.id).single();
+            if (data) {
+                document.getElementById('userGreeting').innerText = data.name;
+                document.getElementById('metaBadge').innerText = `Dept: ${data.department} | Level: ${data.level}`;
+                document.getElementById('prevUnits').value = data.prev_units || "";
+                document.getElementById('prevPoints').value = data.prev_points || "";
+            }
+            document.getElementById('coursesContainer').innerHTML = "";
+            for(let i=0; i<4; i++) { addRow(); }
+        }
+
+        function switchActiveView(targetId) {
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('studentScreen').classList.add('hidden');
+            document.getElementById('adminScreen').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById(targetId).classList.remove('hidden');
+        }
+
+        function handleLogout() {
+            location.reload(); 
+        }
+
+        function addRow() {
+            const container = document.getElementById('coursesContainer');
+            const scaleKey = document.getElementById('gradingScale').value;
+            const rowId = 'row_' + Math.random().toString(36).substr(2, 5);
+
+            const html = `
+                <div id="${rowId}" class="grid grid-cols-12 gap-2 items-center bg-slate-50 p-1.5 rounded-lg border">
+                    <input type="text" placeholder="CHM101" class="col-span-5 uppercase text-xs px-2 py-1 border rounded bg-white">
+                    <input type="number" placeholder="Units" class="unit-input col-span-3 text-xs px-2 py-1 border rounded bg-white" oninput="calculateCGPA()">
+                    <select class="grade-input col-span-3 text-xs px-1 py-1 bg-white border rounded" onchange="calculateCGPA()">
+                        ${generateGradeOptions(scaleKey)}
+                    </select>
+                    <button onclick="document.getElementById('${rowId}').remove(); calculateCGPA();" class="col-span-1 text-rose-500 font-bold">&times;</button>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+
+        function generateGradeOptions(scaleKey) {
+            return gradingSystems[scaleKey].map(i => `<option value="${i.p}">${i.g}</option>`).join('');
+        }
+
+        function updateGradesDropdown() {
+            const scaleKey = document.getElementById('gradingScale').value;
+            document.querySelectorAll('.grade-input').forEach(d => d.innerHTML = generateGradeOptions(scaleKey));
+            calculateCGPA();
+        }
+
+        function calculateCGPA() {
+            let curUnits = 0, curPoints = 0;
+            const units = document.querySelectorAll('.unit-input');
+            const grades = document.querySelectorAll('.grade-input');
+
+            units.forEach((u, i) => {
+                const val = parseFloat(u.value);
+                const pt = parseFloat(grades[i].value);
+                if(!isNaN(val) && val > 0) { curUnits += val; curPoints += (val * pt); }
+            });
+
+            let gpa = curUnits > 0 ? (curPoints / curUnits) : 0;
+            document.getElementById('gpaDisplay').innerText = gpa.toFixed(2);
+
+            const pUnits = parseFloat(document.getElementById('prevUnits').value) || 0;
+            const pPoints = parseFloat(document.getElementById('prevPoints').value) || 0;
+
+            let totalUnits = curUnits + pUnits;
+            let totalPoints = curPoints + pPoints;
+            let cgpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
+            
+            document.getElementById('cgpaDisplay').innerText = cgpa.toFixed(2);
+            document.getElementById('classDisplay').innerText = cgpa >= 4.5 ? "First Class" : cgpa >= 3.5 ? "Second Class Upper" : cgpa >= 2.4 ? "Second Class Lower" : "Pass/Third Class";
+        }
+
+        async function saveDataToCloud() {
+            if(!currentUserSession) return;
+            
+            const prevUnits = parseFloat(document.getElementById('prevUnits').value) || 0;
+            const prevPoints = parseFloat(document.getElementById('prevPoints').value) || 0;
+            const currentCgpa = parseFloat(document.getElementById('cgpaDisplay').innerText) || 0;
+
+            let curUnits = 0, curPoints = 0;
+            document.querySelectorAll('.unit-input').forEach((u, i) => {
+                const val = parseFloat(u.value);
+                const pt = parseFloat(document.querySelectorAll('.grade-input')[i].value);
+                if(!isNaN(val) && val > 0) { curUnits += val; curPoints += (val * pt); }
+            });
+
+            const { error } = await supabaseClient.from('student_gpas').update({
+                prev_units: prevUnits, prev_points: prevPoints,
+                semester_units: curUnits, semester_points: curPoints,
+                current_cgpa: currentCgpa, updated_at: new Date()
+            }).eq('id', currentUserSession.id);
+
+            if(error) alert("Sync Failed: " + error.message);
+            else alert("Data synchronized securely to Cloud database!");
+        }
+
+        async function loadAdminDashboardData() {
+            const { data, error } = await supabaseClient.from('student_gpas').select('*').order('current_cgpa', { ascending: false });
+            if(error) return alert("Could not fetch database records: " + error.message);
+
+            document.getElementById('admTotalCount').innerText = data.length;
+            
+            let totalCgpaSum = 0;
+            const tableContainer = document.getElementById('adminTableBody');
+            tableContainer.innerHTML = "";
+
+            data.forEach(student => {
+                totalCgpaSum += Number(student.current_cgpa || 0);
+                
+                const row = `
+                    <div class="p-3 flex justify-between items-center bg-white text-xs border-b">
+                        <div>
+                            <p class="font-bold text-slate-800">${student.name} (${student.level})</p>
+                            <p class="text-slate-400 text-[11px]">${student.department} • Total Units: ${Number(student.prev_units)+Number(student.semester_units)}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="px-2 py-1 font-mono font-bold rounded bg-slate-900 text-emerald-400">${Number(student.current_cgpa).toFixed(2)}</span>
+                        </div>
+                    </div>`;
+                tableContainer.insertAdjacentHTML('beforeend', row);
+            });
+
+            let overallAvg = data.length > 0 ? (totalCgpaSum / data.length) : 0;
+            document.getElementById('admAvgCgpa').innerText = overallAvg.toFixed(2);
+        }
+    </script>
+</body>
+</html>
